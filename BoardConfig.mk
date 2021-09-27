@@ -121,7 +121,7 @@ TARGET_TAP_TO_WAKE_NODE := "/sys/bus/i2c/devices/i2c-2/2-004b/wake_gesture_enabl
 
 # RIL
 SIM_COUNT := 2
-BOARD_PROVIDES_RILD := true
+ENABLE_VENDOR_RIL_SERVICE := true
 BOARD_PROVIDES_LIBRIL := true
 BOARD_CONNECTIVITY_MODULE := conn_soc
 
