@@ -1,0 +1,6 @@
+<resources>
+
+    <!-- Default values for LiveDisplay -->
+    <integer name="config_defaultLiveDisplayMode">0</integer>
+
+</resources>
