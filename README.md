@@ -1,7 +1,7 @@
 # LeEco 1s - Android Nougat Roms
 ==============
 
-This branch is device for building of the Nougat roms.
+This branch is device tree for building of the Nougat roms.
 
 ---
 
