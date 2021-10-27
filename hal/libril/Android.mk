@@ -11,6 +11,7 @@
 #
 
 ifeq ($(BOARD_PROVIDES_LIBRIL),true)
+
 LOCAL_PATH:= $(call my-dir)
 
 ril_src_files := \
@@ -18,7 +19,8 @@ ril_src_files := \
     ril_event.cpp\
     RilSapSocket.cpp \
     ril_service.cpp \
-    sap_service.cpp
+    sap_service.cpp \
+    libnetutils.c
 
 ril_shared_libs := \
     liblog \
@@ -29,20 +31,25 @@ ril_shared_libs := \
     librilmtk \
     librilutils \
     mtk-ril \
-    android.hardware.radio@1.0 \
-    android.hardware.radio.deprecated@1.0 \
     libhidlbase  \
     libhidltransport \
-    libhwbinder
+    libhwbinder \
+    android.hardware.radio@1.0 \
+    android.hardware.radio.deprecated@1.0
+
+#ifeq ($(BOARD_USES_MTK_HARDWARE), true)
+#ril_shared_libs += \
+#    vendor.mediatek.hardware.radio@1.1 \
+#    vendor.mediatek.hardware.radio@2.0 \
+#    vendor.mediatek.hardware.radio.deprecated@1.1
+#endif
 
 ril_inc := external/nanopb-c \
-    $(LOCAL_PATH)/../include
+           $(DEVICE_PATH)/include/telephony
 
-ril_cflags := -Wno-unused-parameter -DANDROID_SIM_COUNT_2 -DANDROID_MULTI_SIM
+ril_cflags := -Wno-unused-parameter
 
-ifeq ($(BOARD_USES_MTK_HARDWARE),true)
-  ril_cflags += -DMTK_HARDWARE
-endif
+ril_cflags += -DANDROID_SIM_COUNT_2 -DANDROID_MULTI_SIM -DMTK_HARDWARE
 
 # something wrong, cause channel occupied after oNewCommandConnect
 # workaround but not complete yet
@@ -56,7 +63,12 @@ ifeq ($(BOARD_USES_RIL_CHANNEL_QUEUING),true)
   ril_cflags += -DRIL_CHANNEL_QUEUING
 endif
 
+ifneq ($(DISABLE_RILD_OEM_HOOK),)
+    ril_cflags += -DOEM_HOOK_DISABLED
+endif
+
 include $(CLEAR_VARS)
+
 LOCAL_VENDOR_MODULE := true
 LOCAL_SRC_FILES := $(ril_src_files)
 LOCAL_SHARED_LIBRARIES := $(ril_shared_libs)
@@ -65,10 +77,15 @@ LOCAL_STATIC_LIBRARIES := \
 
 LOCAL_CFLAGS := $(ril_cflags)
 LOCAL_C_INCLUDES += $(ril_inc)
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/../include
+
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(DEVICE_PATH)/include/telephony
+
 LOCAL_MODULE:= libril
+
 LOCAL_CLANG := true
+
 LOCAL_SANITIZE := integer
+
 include $(BUILD_SHARED_LIBRARY)
 
-endif
+endif # BOARD_PROVIDES_LIBRIL

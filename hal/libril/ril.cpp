@@ -307,21 +307,9 @@ extern "C" void RIL_onUnsolicitedResponse(int unsolResponse, const void *data,
 #endif
 #endif
 
-#ifdef MTK_HARDWARE
 #define RIL_UNSOL_RESPONSE(a, b, c, d) RIL_onUnsolicitedResponseSocket((a), (b), (c), (d))
 #define CALL_ONREQUEST(a, b, c, d, e) s_callbacksSocket.onRequest((a), (b), (c), (d), (e))
 #define CALL_ONSTATEREQUEST(a) s_callbacksSocket.onStateRequest(a)
-#else
-#if defined(ANDROID_MULTI_SIM)
-#define RIL_UNSOL_RESPONSE(a, b, c, d) RIL_onUnsolicitedResponse((a), (b), (c), (d))
-#define CALL_ONREQUEST(a, b, c, d, e) s_callbacksSocket.onRequest((a), (b), (c), (d), (e))
-#define CALL_ONSTATEREQUEST(a) s_callbacksSocket.onStateRequest(a)
-#else
-#define RIL_UNSOL_RESPONSE(a, b, c, d) RIL_onUnsolicitedResponse((a), (b), (c))
-#define CALL_ONREQUEST(a, b, c, d, e) s_callbacksSocket.onRequest((a), (b), (c), (d))
-#define CALL_ONSTATEREQUEST(a) s_callbacksSocket.onStateRequest()
-#endif
-#endif
 
 static UserCallbackInfo * internalRequestTimedCallback
     (RIL_TimedCallback callback, void *param, const struct timeval *relativeTime, int cid);
@@ -329,7 +317,6 @@ static UserCallbackInfo * internalRequestTimedCallback
 /** Index == requestNumber */
 static CommandInfo s_commands[] = {
 #include "ril_commands.h"
-//#include "mtk_ril_commands.h"
 };
 
 static UnsolResponseInfo s_unsolResponses[] = {
@@ -611,14 +598,12 @@ void onNewCommandConnect(RIL_SOCKET_ID socket_id) {
     char prop[PROPERTY_VALUE_MAX];
     RLOGD("**onNewCommandConnect,socket=%d,pthread=%lu",socket_id, pthread_self());
 
-#ifdef MTK_HARDWARE
 #define GSM_RIL_INIT	"gsm.ril.init"
     do {
-	sleep(1);  // sleep 1s
-	// wait until init callbacks finished, OR haven't started
-	property_get(GSM_RIL_INIT, prop, "1");
+		usleep(100000);  // sleep for 0.1s
+		// wait until init callbacks finished, OR haven't started
+		property_get(GSM_RIL_INIT, prop, "1");
     } while (strcmp(prop, "1"));
-#endif
     RIL_UNSOL_RESPONSE(RIL_UNSOL_RIL_CONNECTED, &rilVer, sizeof(rilVer), socket_id);
 
     // implicit radio state changed
@@ -647,20 +632,18 @@ void onNewCommandConnect(RIL_SOCKET_ID socket_id) {
 	property_set(PROPERTY_RIL_IMPL, "unavailable");
     }
 
-#ifdef MTK_HARDWARE
 //    RIL_UNSOL_RESPONSE(RIL_UNSOL_SET_ATTACH_APN, NULL, 0, socket_id); // reset apn??
 // MTK modem stuff
 #define RIL_MUXREP_CASE	"ril.mux.report.case"
 #define RIL_MUXREPORT	"ril.muxreport"
     if ( 0 == property_get(RIL_MUXREPORT, prop, NULL) && (socket_id == RIL_SOCKET_2)) {
-	RLOGD("**reset modem**");
-	property_set(GSM_RIL_INIT, "0");		// clear ril init
-	// reset modem and service once after boot
-	property_set(RIL_MUXREP_CASE, "2");		// reset modem 1
-	property_set("ctl.start", "muxreport-daemon");	// activate
-	property_set(RIL_MUXREPORT, "0");		// clear
+		RLOGD("**reset modem**");
+		property_set(GSM_RIL_INIT, "0");		// clear ril init
+		// reset modem and service once after boot
+		property_set(RIL_MUXREP_CASE, "2");		// reset modem 1
+		property_set("ctl.start", "muxreport-daemon");	// activate
+		property_set(RIL_MUXREPORT, "0");		// clear
     }
-#endif
 }
 
 //static 
@@ -1287,33 +1270,35 @@ RIL_onRequestComplete(RIL_Token t, RIL_Errno s_e, void *s_response, size_t s_res
 #endif
 
     if (pRI->local > 0) {
-	// Locally issued command...void only!
-	// response does not go back up the command socket
-	RLOGD("C[locl]< %s", requestToString(pRI->pCI->requestNumber));
-	if (pRI->pCI->requestNumber == RIL_REQUEST_GET_IMEI) {
-	    int i = (int)socket_id;
-	    RLOGD("SOCKET_ID_IMEI= %d", i);
-            Device_ID[i].imei = (char*) response;
-	    RLOGD("IMEI=%s", Device_ID[i].imei);
-	}
-	else if (pRI->pCI->requestNumber == RIL_REQUEST_GET_IMEISV) {
-	    int i = (int)socket_id;
-	    RLOGD("SOCKET_ID_IMEI_SV= %d", i);
-            Device_ID[i].imeisv = (char*) response;
-	    RLOGD("IMEISV=%s", Device_ID[i].imeisv);
-	}
-	goto done;
+		// Locally issued command...void only!
+		// response does not go back up the command socket
+		RLOGD("C[locl]< %s", requestToString(pRI->pCI->requestNumber));
+		if (pRI->pCI->requestNumber == RIL_REQUEST_GET_IMEI) {
+		    int i = (int)socket_id;
+		    RLOGD("SOCKET_ID_IMEI= %d", i);
+	        Device_ID[i].imei = (char*) response;
+		    RLOGD("IMEI=%s", Device_ID[i].imei);
+		}
+		else if (pRI->pCI->requestNumber == RIL_REQUEST_GET_IMEISV) {
+		    int i = (int)socket_id;
+		    RLOGD("SOCKET_ID_IMEI_SV= %d", i);
+	        Device_ID[i].imeisv = (char*) response;
+		    RLOGD("IMEISV=%s", Device_ID[i].imeisv);
+		}
+		goto done;
     }
 
 // *** handle unsupported but necessary requests
     if (pRI->pCI->requestNumber == RIL_REQUEST_DEVICE_IDENTITY) {
-	RLOGD("Overriding RIL_REQUEST_DEVICE_IDENTITY");
+		RLOGD("Overriding RIL_REQUEST_DEVICE_IDENTITY");
 	    int i = (int)socket_id;
 	    RLOGD("SOCKET_ID_IDENTITY= %d", i);
+	    RLOGD("IMEI=%s", Device_ID[i].imei);
+	    RLOGD("IMEISV=%s", Device_ID[i].imeisv);
 	    response = &(Device_ID[i]);
 	    responselen = 4 * sizeof(char*);
 	    e = RIL_E_SUCCESS;
-    }
+	}
 
     appendPrintBuf("[%04d]< %s",
 	pRI->token, requestToString(pRI->pCI->requestNumber));
@@ -1633,11 +1618,11 @@ static void send_unsolResponse(int unsolResponse, const void *data,
 	RLOGW("**UNSOLICITED: %s not handled!", requestToString(unsolResponse));
 	ret = 0;
     }
-    else
-    if (s_unsolResponses[unsolResponseIndex].responseFunction) {
-        ret = s_unsolResponses[unsolResponseIndex].responseFunction(
-                (int) soc_id, responseType, 0, RIL_E_SUCCESS, const_cast<void*>(data),
-                datalen);
+    else{
+		if (s_unsolResponses[unsolResponseIndex].responseFunction) {
+			ret = s_unsolResponses[unsolResponseIndex].responseFunction((int) soc_id,
+				responseType, 0, RIL_E_SUCCESS, const_cast<void*>(data), datalen);
+		}
     }
 
     rwlockRet = pthread_rwlock_unlock(radioServiceRwlockPtr);
